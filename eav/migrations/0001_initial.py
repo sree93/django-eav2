@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(help_text='User-friendly attribute name', max_length=100, verbose_name='Name')),
-                ('slug', eav.fields.EavSlugField(help_text='Short unique attribute label', unique=True, verbose_name='Slug')),
+                ('slug', eav.fields.EavSlugField(help_text='Short unique attribute label', max_length=256, unique=True, verbose_name='Slug')),
                 ('description', models.CharField(blank=True, help_text='Short description', max_length=256, null=True, verbose_name='Description')),
                 ('datatype', eav.fields.EavDatatypeField(choices=[('text', 'Text'), ('date', 'Date'), ('float', 'Float'), ('int', 'Integer'), ('bool', 'True / False'), ('object', 'Django Object'), ('enum', 'Multiple Choice')], max_length=6, verbose_name='Data Type')),
                 ('created', models.DateTimeField(default=django.utils.timezone.now, editable=False, verbose_name='Created')),
