@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name             = 'django-eav2',
+    name             = 'django-eav2-sree',
     version          = __import__('eav').__version__,
     license          = 'GNU Lesser General Public License (LGPL), Version 3',
     requires         = ['python (>= 3.5)', 'django (>= 1.11.14)'],
