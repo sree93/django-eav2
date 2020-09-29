@@ -170,7 +170,7 @@ class Attribute(models.Model):
     """
     slug = EavSlugField(
         verbose_name = _('Slug'),
-        max_length   = 50,
+        max_length   = 256,
         db_index     = True,
         unique       = True,
         help_text    = _('Short unique attribute label')
