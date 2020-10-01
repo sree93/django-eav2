@@ -4,7 +4,7 @@ from django.contrib.admin.sites import AdminSite
 import eav
 import sys
 from eav.admin import *
-from .models import Patient, M2MModel, ExampleModel
+from tests.models import Patient, M2MModel, ExampleModel
 from eav.models import Attribute
 from eav.forms import BaseDynamicEntityForm
 from django.contrib import admin

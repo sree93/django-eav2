@@ -3,7 +3,7 @@ from django.test import TestCase
 from eav.models import EnumGroup, Attribute, Value, EnumValue
 
 import eav
-from .models import Patient
+from tests.models import Patient
 
 
 class MiscModels(TestCase):

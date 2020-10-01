@@ -3,15 +3,18 @@ This module contains the custom manager used by entities registered with eav.
 """
 
 from django.db import models
+from django.db.models.manager import BaseManager
 
 from .queryset import EavQuerySet
 
 
-class EntityManager(models.Manager):
+class EntityManager(BaseManager.from_queryset(EavQuerySet)):
     """
     Our custom manager, overrides ``models.Manager``.
     """
     _queryset_class = EavQuerySet
+
+
 
     def create(self, **kwargs):
         """

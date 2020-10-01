@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 import eav
 from eav.models import Attribute, Value, EnumValue, EnumGroup
 
-from .models import Patient
+from tests.models import Patient
 
 
 class DataValidation(TestCase):

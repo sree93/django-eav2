@@ -1,5 +1,5 @@
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.db.utils import NotSupportedError
 from django.test import TestCase
 
@@ -7,7 +7,7 @@ import eav
 from eav.models import Attribute, EnumGroup, EnumValue, Value
 from eav.registry import EavConfig
 
-from .models import Encounter, Patient
+from tests.models import Encounter, Patient
 
 
 class Queries(TestCase):
@@ -31,6 +31,17 @@ class Queries(TestCase):
         ynu.values.add(self.unknown)
 
         Attribute.objects.create(name='fever', datatype=Attribute.TYPE_ENUM, enum_group=ynu)
+
+        self.cashback = EnumValue.objects.create(value='cashback')
+        self.petrol = EnumValue.objects.create(value='petrol')
+        self.lounge = EnumValue.objects.create(value='lounge')
+
+        card_facilities = EnumGroup.objects.create(name='card_facilities')
+        card_facilities.values.add(self.cashback)
+        card_facilities.values.add(self.petrol)
+        card_facilities.values.add(self.lounge)
+
+        Attribute.objects.create(name='card_facilities', datatype=Attribute.TYPE_M2M, enum_group=card_facilities)
 
     def tearDown(self):
         eav.unregister(Encounter)
@@ -58,16 +69,48 @@ class Queries(TestCase):
                 eav__country=row[4]
             )
 
+    def test_m2m_queries(self):
+        self.init_data()
+
+        cashback = self.cashback
+        petrol = self.petrol
+        lounge = self.lounge
+
+        anne = Patient.objects.get(name='Anne')
+        bob = Patient.objects.get(name='Bob')
+        cyrill = Patient.objects.get(name='Cyrill')
+
+        anne.eav.card_facilities.add(petrol, lounge)
+        bob.eav.card_facilities.add(cashback)
+        cyrill.eav.card_facilities.add(cashback, petrol, lounge)
+
+        self.assertEqual(anne.eav.card_facilities.all().count(), 2)
+        self.assertEqual(bob.eav.card_facilities.all().count(), 1)
+        self.assertEqual(cyrill.eav.card_facilities.all().count(), 3)
+
+        self.assertEqual(Patient.objects.filter(eav__card_facilities=cashback).distinct().count(), 2)
+
+        # exact match for multiple choice
+
+        match = Patient.objects.enum_exact_filter(attribute=Attribute.object.get(slug='card_facilities'), enums=[petrol, lounge])
+
+        self.assertEqual(
+            match.count(),
+            1
+        )
+
+        self.assertEqual(match.first(), anne)
+
     def test_get_or_create_with_eav(self):
         Patient.objects.get_or_create(name='Bob', eav__age=5)
         self.assertEqual(Patient.objects.count(), 1)
-        self.assertEqual(Value.objects.count(), 1)
+        self.assertEqual(Value.objects.count(), 2)
         Patient.objects.get_or_create(name='Bob', eav__age=5)
         self.assertEqual(Patient.objects.count(), 1)
-        self.assertEqual(Value.objects.count(), 1)
+        self.assertEqual(Value.objects.count(), 2)
         Patient.objects.get_or_create(name='Bob', eav__age=6)
         self.assertEqual(Patient.objects.count(), 2)
-        self.assertEqual(Value.objects.count(), 2)
+        self.assertEqual(Value.objects.count(), 4)
 
     def test_get_with_eav(self):
         p1, _ = Patient.objects.get_or_create(name='Bob', eav__age=6)
@@ -81,7 +124,7 @@ class Queries(TestCase):
 
         # Check number of objects in DB.
         self.assertEqual(Patient.objects.count(), 5)
-        self.assertEqual(Value.objects.count(), 20)
+        self.assertEqual(Value.objects.count(), 25)
 
         # Nobody
         q1 = Q(eav__fever=self.yes) & Q(eav__fever=self.no)

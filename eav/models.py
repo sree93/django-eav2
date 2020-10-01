@@ -138,6 +138,7 @@ class Attribute(models.Model):
     TYPE_BOOLEAN = 'bool'
     TYPE_OBJECT  = 'object'
     TYPE_ENUM    = 'enum'
+    TYPE_M2M     = 'm2m_enum'
 
     DATATYPE_CHOICES = (
         (TYPE_TEXT,    _('Text')),
@@ -146,7 +147,8 @@ class Attribute(models.Model):
         (TYPE_INT,     _('Integer')),
         (TYPE_BOOLEAN, _('True / False')),
         (TYPE_OBJECT,  _('Django Object')),
-        (TYPE_ENUM,    _('Multiple Choice')),
+        (TYPE_ENUM,    _('Single Choice')),
+        (TYPE_M2M,     _('Multiple Choice')),
     )
 
     # Core attributes
@@ -154,7 +156,7 @@ class Attribute(models.Model):
     datatype = EavDatatypeField(
         verbose_name = _('Data Type'),
         choices      = DATATYPE_CHOICES,
-        max_length   = 6
+        max_length   = 16
     )
 
     name = models.CharField(
@@ -261,6 +263,8 @@ class Attribute(models.Model):
                     % dict(val = value, attr = self)
                 )
 
+
+
     def save(self, *args, **kwargs):
         """
         Saves the Attribute and auto-generates a slug field
@@ -280,12 +284,17 @@ class Attribute(models.Model):
         """
         if self.datatype == self.TYPE_ENUM and not self.enum_group:
             raise ValidationError(
+                _('You must set the choice group for single choice attributes')
+            )
+
+        if self.datatype == self.TYPE_M2M and not self.enum_group:
+            raise ValidationError(
                 _('You must set the choice group for multiple choice attributes')
             )
 
-        if self.datatype != self.TYPE_ENUM and self.enum_group:
+        if self.datatype not in [self.TYPE_ENUM, self.TYPE_M2M] and self.enum_group:
             raise ValidationError(
-                _('You can only assign a choice group to multiple choice attributes')
+                _('You can only assign a choice group to single/multiple choice attributes')
             )
 
     def get_choices(self):
@@ -317,7 +326,7 @@ class Attribute(models.Model):
                 attribute = self
             )
         except Value.DoesNotExist:
-            if value == None or value == '':
+            if (value == None or value == '') and self.datatype != self.TYPE_M2M:
                 return
 
             value_obj = Value.objects.create(
@@ -326,7 +335,7 @@ class Attribute(models.Model):
                 attribute = self
             )
 
-        if value == None or value == '':
+        if (value == None or value == '') and self.datatype != self.TYPE_M2M:
             value_obj.delete()
             return
 
@@ -383,6 +392,11 @@ class Value(models.Model):
         related_name = 'eav_values'
     )
 
+    value_m2m_enum = models.ManyToManyField(
+        EnumValue,
+        related_name='eav_m2m_values',
+    )  # @TODO: validation for enum group element on add
+
     generic_value_id = models.IntegerField(blank=True, null=True)
 
     generic_value_ct = models.ForeignKey(
@@ -425,7 +439,8 @@ class Value(models.Model):
         """
         Set the object this value is holding
         """
-        setattr(self, 'value_%s' % self.attribute.datatype, new_value)
+        if self.attribute.datatype != Attribute.TYPE_M2M:
+            setattr(self, 'value_%s' % self.attribute.datatype, new_value)
 
     value = property(_get_value, _set_value)
 
@@ -531,6 +546,9 @@ class Entity(object):
                 if attribute.datatype == Attribute.TYPE_ENUM and not isinstance(attribute_value, EnumValue):
                     attribute_value = EnumValue.objects.get(value=attribute_value)
                 attribute.save_value(self.instance, attribute_value)
+
+            if attribute.datatype == Attribute.TYPE_M2M:
+                attribute.save_value(self.instance, None)
 
     def validate_attributes(self):
         """

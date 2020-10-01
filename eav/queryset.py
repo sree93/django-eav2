@@ -25,11 +25,11 @@ from functools import wraps
 from django.core.exceptions import FieldDoesNotExist
 from django.core.exceptions import FieldError, ObjectDoesNotExist
 from django.db import models
-from django.db.models import Case, IntegerField, Q, When
+from django.db.models import Case, IntegerField, Q, When, Count
 from django.db.models.query import QuerySet
 from django.db.utils import NotSupportedError
 
-from .models import Attribute, Value, EnumValue
+from eav.models import Attribute, Value, EnumValue
 
 
 def is_eav_and_leaf(expr, gr_name):
@@ -44,9 +44,9 @@ def is_eav_and_leaf(expr, gr_name):
         bool
     """
     return (
-        getattr(expr, 'connector', None) == 'AND' and
-        len(expr.children) == 1 and
-        expr.children[0][0] in ['pk__in', '{}__in'.format(gr_name)]
+            getattr(expr, 'connector', None) == 'AND' and
+            len(expr.children) == 1 and
+            expr.children[0][0] in ['pk__in', '{}__in'.format(gr_name)]
     )
 
 
@@ -162,6 +162,7 @@ def eav_filter(func):
     :func:`expand_q_filters` and kwargs through :func:`expand_eav_filter`. Returns the
     called function (filter or exclude).
     """
+
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         nargs = []
@@ -269,6 +270,38 @@ class EavQuerySet(QuerySet):
     """
     Overrides relational operators for EAV models.
     """
+
+    def enum_exact_filter(self, attribute, enums):
+
+        filter_condition = Q(count=len(enums))
+
+        if not isinstance(attribute, Attribute):
+            attribute = Attribute.objects.get(slug=attribute)
+
+        for enum in enums:
+            if not isinstance(enum, EnumValue):
+                try:
+                    enum = attribute.enum_group.values.get(value=enum)
+                except Exception as e:
+                    raise Exception(
+                        "Root Exception: {exc}"
+                        "Unique EnumValue with value `{enum_value}` not found for Attribute: `{attribute}`\n"
+                        "Try passing list of enum objects instead".format(
+                            exc=str(e),
+                            enum_value=enum,
+                            attribute=attribute.name
+                        )
+                    )
+
+            attribute_condition = {
+                'eav__{}'.format(attribute.slug): enum
+            }
+
+            filter_condition = filter_condition & Q(**attribute_condition)
+
+        return super() \
+            .annotate(count=Count('eav_values__value_m2m_enum')) \
+            .filter(Q(filter_condition)).distinct()
 
     @eav_filter
     def filter(self, *args, **kwargs):

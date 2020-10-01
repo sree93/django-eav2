@@ -7,7 +7,7 @@ from eav.exceptions import IllegalAssignmentException
 from eav.models import Attribute, Value
 from eav.registry import EavConfig
 
-from .models import Encounter, Patient
+from tests.models import Encounter, Patient
 
 if sys.version_info[0] > 2:
     from .metaclass_models3 import RegisterTestModel
