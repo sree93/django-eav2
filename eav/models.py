@@ -204,6 +204,14 @@ class Attribute(models.Model):
 
     # Useful meta-information
 
+    tag = models.CharField(
+        verbose_name=_('Tag'),
+        max_length=128,
+        blank=True,
+        null=True,
+        help_text=_('Tag the attribute for categorisation')
+    )
+
     display_order = models.PositiveIntegerField(
         verbose_name = _('Display order'),
         default = 1
