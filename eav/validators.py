@@ -83,3 +83,7 @@ def validate_enum(value):
 
     if isinstance(value, EnumValue) and not value.pk:
         raise ValidationError(_(u"EnumValue has not been saved yet"))
+
+
+def validate_m2m_enum(value):
+    pass

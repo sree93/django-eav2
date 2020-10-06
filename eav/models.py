@@ -26,7 +26,8 @@ from .validators import (
     validate_date,
     validate_bool,
     validate_object,
-    validate_enum
+    validate_enum,
+    validate_m2m_enum,
 )
 from .exceptions import IllegalAssignmentException
 from .fields import EavDatatypeField, EavSlugField
@@ -250,6 +251,7 @@ class Attribute(models.Model):
             'bool':   validate_bool,
             'object': validate_object,
             'enum':   validate_enum,
+            'm2m_enum': validate_m2m_enum,
         }
 
         return [DATATYPE_VALIDATORS[self.datatype]]
@@ -270,8 +272,6 @@ class Attribute(models.Model):
                     _('%(val)s is not a valid choice for %(attr)s')
                     % dict(val = value, attr = self)
                 )
-
-
 
     def save(self, *args, **kwargs):
         """
