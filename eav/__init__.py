@@ -1,4 +1,4 @@
-__version__ = '0.13.6'
+__version__ = '0.13.9'
 
 def register(model_cls, config_cls=None):
     from .registry import Registry

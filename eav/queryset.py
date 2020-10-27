@@ -341,6 +341,12 @@ class EavQuerySet(QuerySet):
             # Continue only for EAV attributes.
             if len(term) == 2 and term[0] in [config_cls.eav_attr, '-{}'.format(config_cls.eav_attr)] :
                 # Retrieve Attribute over which the ordering is performed.
+
+                field_prepend = ''
+                if '-' == term[0][0]:
+                    field_prepend = '-'
+                    term[0] = term[0][1:]
+
                 try:
                     attr = Attribute.objects.get(slug=term[1])
                 except ObjectDoesNotExist:
@@ -358,8 +364,8 @@ class EavQuerySet(QuerySet):
                     entity_id__in=self
                 ).order_by(
                     # Order values by their value-field of
-                    # appriopriate attribute data-type.
-                    field_name
+                    # appropriate attribute data-type.
+                    '{}{}'.format(field_prepend, field_name)
                 ).values_list(
                     # Retrieve only primary-keys of the entities
                     # in the current queryset.
