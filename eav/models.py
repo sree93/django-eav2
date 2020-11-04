@@ -131,6 +131,7 @@ class Attribute(models.Model):
     """
     class Meta:
         ordering = ['name']
+        unique_together = ['slug', 'tag']
 
     TYPE_TEXT    = 'text'
     TYPE_FLOAT   = 'float'
@@ -175,7 +176,6 @@ class Attribute(models.Model):
         verbose_name = _('Slug'),
         max_length   = 256,
         db_index     = True,
-        unique       = True,
         help_text    = _('Short unique attribute label')
     )
 
@@ -228,6 +228,7 @@ class Attribute(models.Model):
        default      = timezone.now,
        editable     = False
     )
+
 
     @property
     def help_text(self):
