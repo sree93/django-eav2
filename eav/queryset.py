@@ -234,7 +234,17 @@ def expand_eav_filter(model_cls, key, value):
     if len(fields) > 1 and config_cls and fields[0] == config_cls.eav_attr:
         slug = fields[1]
         gr_name = config_cls.generic_relation_attr
-        datatype = Attribute.objects.get(slug=slug).datatype
+
+        attribute_kwargs = {
+            'slug': slug
+        }
+
+        try:
+            attribute_kwargs['tag'] = config_cls.ATTRIBUTE_TAG
+        except AttributeError:
+            pass
+
+        datatype = Attribute.objects.get(**attribute_kwargs).datatype
 
         value_key = ''
         if datatype == Attribute.TYPE_ENUM and not isinstance(value, EnumValue):
@@ -276,7 +286,19 @@ class EavQuerySet(QuerySet):
         filter_condition = Q(count=len(enums))
 
         if not isinstance(attribute, Attribute):
-            attribute = Attribute.objects.get(slug=attribute)
+
+            config_cls = self.model._eav_config_cls
+
+            attribute_kwargs = {
+                'slug': attribute
+            }
+
+            try:
+                attribute_kwargs['tag'] = config_cls.ATTRIBUTE_TAG
+            except AttributeError:
+                pass
+
+            attribute = Attribute.objects.get(**attribute_kwargs)
 
         for enum in enums:
             if not isinstance(enum, EnumValue):
@@ -348,7 +370,16 @@ class EavQuerySet(QuerySet):
                     term[0] = term[0][1:]
 
                 try:
-                    attr = Attribute.objects.get(slug=term[1])
+                    attribute_kwargs = {
+                        'slug': term[1],
+                    }
+
+                    try:
+                        attribute_kwargs['tag'] = config_cls.ATTRIBUTE_TAG
+                    except AttributeError:
+                        pass
+
+                    attr = Attribute.objects.get(**attribute_kwargs)
                 except ObjectDoesNotExist:
                     raise ObjectDoesNotExist(
                         'Cannot find EAV attribute "{}"'.format(term[1])

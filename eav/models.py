@@ -311,7 +311,7 @@ class Attribute(models.Model):
         Returns a query set of :class:`EnumValue` objects for this attribute.
         Returns None if the datatype of this attribute is not *TYPE_ENUM*.
         """
-        return self.enum_group.values.all() if self.datatype == Attribute.TYPE_ENUM else None
+        return self.enum_group.values.all() if self.datatype in [Attribute.TYPE_ENUM, Attribute.TYPE_M2M] else None
 
     def save_value(self, entity, value):
         """
@@ -427,7 +427,7 @@ class Value(models.Model):
     attribute = models.ForeignKey(
         Attribute,
         db_index     = True,
-        on_delete    = models.PROTECT,
+        on_delete    = models.CASCADE,
         verbose_name = _('Attribute')
     )
 

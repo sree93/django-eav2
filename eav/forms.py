@@ -3,7 +3,7 @@
 from copy import deepcopy
 
 from django.contrib.admin.widgets import AdminSplitDateTime
-from django.forms import (BooleanField, CharField, ChoiceField, DateTimeField,
+from django.forms import (BooleanField, CharField, ChoiceField, MultipleChoiceField, DateTimeField,
                           FloatField, IntegerField, ModelForm)
 from django.utils.translation import ugettext_lazy as _
 
@@ -37,6 +37,7 @@ class BaseDynamicEntityForm(ModelForm):
         'date': DateTimeField,
         'bool': BooleanField,
         'enum': ChoiceField,
+        'm2m_enum': MultipleChoiceField
     }
 
     def __init__(self, data=None, *args, **kwargs):
@@ -61,13 +62,16 @@ class BaseDynamicEntityForm(ModelForm):
 
             datatype = attribute.datatype
 
-            if datatype == attribute.TYPE_ENUM:
+            if datatype in [attribute.TYPE_ENUM, attribute.TYPE_M2M]:
                 values = attribute.get_choices().values_list('id', 'value')
                 choices = [('', '-----')] + list(values)
                 defaults.update({'choices': choices})
 
                 if value:
-                    defaults.update({'initial': value.pk})
+                    if datatype == attribute.TYPE_ENUM:
+                        defaults.update({'initial': value.pk})
+                    else:
+                        defaults.update({'initial': [_ for _ in value.values_list('pk', flat=True)]})
 
             elif datatype == attribute.TYPE_DATE:
                 defaults.update({'widget': AdminSplitDateTime})
@@ -78,7 +82,7 @@ class BaseDynamicEntityForm(ModelForm):
             self.fields[attribute.slug] = MappedField(**defaults)
 
             # Fill initial data (if attribute was already defined).
-            if value and not datatype == attribute.TYPE_ENUM:
+            if value and not datatype in [attribute.TYPE_ENUM, attribute.TYPE_M2M]:
                 self.initial[attribute.slug] = value
 
     def save(self, commit=True):
@@ -104,6 +108,16 @@ class BaseDynamicEntityForm(ModelForm):
                     value = attribute.enum_group.values.get(pk=value)
                 else:
                     value = None
+
+            if attribute.datatype == attribute.TYPE_M2M:
+                if value:
+                    values = attribute.enum_group.values.filter(pk=value)
+                else:
+                    values = []
+
+                m2m_attribute = getattr(self.entity, attribute.slug)
+                m2m_attribute.clear()
+                m2m_attribute.add(**values)
 
             setattr(self.entity, attribute.slug, value)
 
