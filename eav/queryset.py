@@ -321,8 +321,57 @@ class EavQuerySet(QuerySet):
 
             filter_condition = filter_condition & Q(**attribute_condition)
 
-        return super() \
+        return self \
             .annotate(count=Count('eav_values__value_m2m_enum')) \
+            .filter(Q(filter_condition)).distinct()
+
+    def m2m_enum_any_filter(self, attribute, enums):
+        filter_condition = None
+
+        if not isinstance(attribute, Attribute):
+
+            config_cls = self.model._eav_config_cls
+
+            attribute_kwargs = {
+                'slug': attribute
+            }
+
+            try:
+                attribute_kwargs['tag'] = config_cls.ATTRIBUTE_TAG
+            except AttributeError:
+                pass
+
+            attribute = Attribute.objects.get(**attribute_kwargs)
+
+        for enum in enums:
+            if not isinstance(enum, EnumValue):
+                try:
+                    enum = attribute.enum_group.values.get(value=enum)
+                except Exception as e:
+                    raise Exception(
+                        "Root Exception: {exc}"
+                        "Unique EnumValue with value `{enum_value}` not found for Attribute: `{attribute}`\n"
+                        "Try passing list of enum objects instead".format(
+                            exc=str(e),
+                            enum_value=enum,
+                            attribute=attribute.name
+                        )
+                    )
+
+            attribute_condition = {
+                'eav__{}'.format(attribute.slug): enum
+            }
+
+            if filter_condition is None:
+                filter_condition = Q(**attribute_condition)
+            else:
+                filter_condition = filter_condition | Q(**attribute_condition)
+
+        # single Q object quick hack
+        if len(enums) == 1:
+            return self.filter(**attribute_condition).distinct()
+
+        return self \
             .filter(Q(filter_condition)).distinct()
 
     @eav_filter
@@ -361,7 +410,7 @@ class EavQuerySet(QuerySet):
 
         for term in [t.split('__') for t in fields]:
             # Continue only for EAV attributes.
-            if len(term) == 2 and term[0] in [config_cls.eav_attr, '-{}'.format(config_cls.eav_attr)] :
+            if len(term) == 2 and term[0] in [config_cls.eav_attr, '-{}'.format(config_cls.eav_attr)]:
                 # Retrieve Attribute over which the ordering is performed.
 
                 field_prepend = ''

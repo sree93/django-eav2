@@ -117,7 +117,7 @@ class BaseDynamicEntityForm(ModelForm):
 
                 m2m_attribute = getattr(self.entity, attribute.slug)
                 m2m_attribute.clear()
-                m2m_attribute.add(**values)
+                m2m_attribute.add(*values)
 
             setattr(self.entity, attribute.slug, value)
 

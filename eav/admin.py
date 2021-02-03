@@ -9,7 +9,7 @@ from eav.models import Attribute, EnumGroup, EnumValue, Value
 
 
 class BaseEntityAdmin(ModelAdmin):
-    def render_change_form(self, request, context, *args, **kwargs):
+    def render_change_form(self, request, context, obj=None, *args, **kwargs):
         """
         Wrapper for ``ModelAdmin.render_change_form``. Replaces standard static
         ``AdminForm`` with an EAV-friendly one. The point is that our form
@@ -21,15 +21,18 @@ class BaseEntityAdmin(ModelAdmin):
         form = context['adminform'].form
 
         # Infer correct data from the form.
-        fieldsets = self.fieldsets or [(None, {'fields': form.fields.keys()})]
+        fieldsets = self.fieldsets or self.get_fieldsets_eav(request, obj, form)
         adminform = admin.helpers.AdminForm(form, fieldsets, self.prepopulated_fields)
         media = mark_safe(self.media + adminform.media)
 
         context.update(adminform=adminform, media=media)
 
         return super(BaseEntityAdmin, self).render_change_form(
-            request, context, *args, **kwargs
+            request, context, obj=obj, *args, **kwargs
         )
+    
+    def get_fieldsets_eav(self, request, obj, form=None):
+        return [(None, {'fields': form.fields.keys()})]
 
 
 class BaseEntityInlineFormSet(BaseInlineFormSet):
